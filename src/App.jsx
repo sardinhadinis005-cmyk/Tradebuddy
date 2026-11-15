@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import StatusBar from './components/StatusBar.jsx';
-import CandidateTable from './components/CandidateTable.jsx';
+import MoverBoard from './components/MoverBoard.jsx';
+import FactorList from './components/FactorList.jsx';
 import ChecklistPanel from './components/ChecklistPanel.jsx';
 import RiskCalculator from './components/RiskCalculator.jsx';
 import KeyLevelPanel from './components/KeyLevelPanel.jsx';
@@ -28,12 +29,14 @@ export default function App() {
   const [preference, setPreference] = useState(readTheme);
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
   const [selected, setSelected] = useState(null);
-  const [candidates, setCandidates] = useState(getDemoCandidates());
+  const [candidates] = useState(getDemoCandidates);
   const [watchlist, setWatchlist] = useState([]);
   const [checks, setChecks] = useState(defaultChecks);
-  const [levels, setLevels] = useState({});
+  const [, setLevels] = useState({});
   const dark = preference === 'system' ? systemDark : preference === 'dark';
   const page = pages.find(item => item.id === active);
+  const watchedSymbols = watchlist.map(item => item.symbol);
+  const isDemo = candidates.some(item => item.dataQuality === 'demo');
 
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
@@ -88,20 +91,28 @@ export default function App() {
       <div className="main-column">
         <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-parent">Workspace /</span><span>{page.label}</span></div><StatusBar /></header>
         <main className="workspace" id="workspace" tabIndex={-1}>
-          <section className="page-heading" aria-labelledby="page-title"><p className="eyebrow">YOUR TRADING WORKSPACE</p><h1 id="page-title">{page.label}</h1><p className="page-description">Your edge starts with a clear workspace.</p></section>
+          <section className="page-heading" aria-labelledby="page-title"><p className="eyebrow">YOUR TRADING WORKSPACE</p><h1 id="page-title">{page.label}</h1><p className="page-description">Biggest pre-market movers, grouped by the quality of the move.</p></section>
 
           {active === 'screener' && (
-            <section className="dashboard-row">
+            <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
               <div className="dashboard-card candidates">
-                <CandidateTable candidates={candidates} onSelect={setSelected} />
+                <MoverBoard
+                  candidates={candidates}
+                  selectedSymbol={selected ? selected.symbol : null}
+                  watchedSymbols={watchedSymbols}
+                  onSelect={setSelected}
+                  onToggleWatch={handleToggleWatchlist}
+                  demo={isDemo}
+                />
               </div>
               {selected && (
                 <div className="dashboard-card selected-detail">
-                  <h3>{selected.symbol}</h3>
-                  <p>Gap: {selected.gapPercent == null ? '—' : selected.gapPercent + '%'} · Bias: {selected.bias || '—'}</p>
+                  <h3>{selected.symbol} · Tier {selected.assessment.tier}</h3>
+                  <p>Gap {selected.gapPercent > 0 ? '+' : ''}{selected.gapPercent.toFixed(2)}% · {selected.assessment.direction === 'up' ? 'Up' : 'Down'} move</p>
+                  <FactorList factors={selected.assessment.factors} />
                   <ChecklistPanel checks={checks} onChange={handleCheck} />
-                  <KeyLevelPanel currentPrice={selected.price || 100} levels={selectedLevel ? selectedLevel.levels : {}} onChange={setLevels} />
-                  <RiskCalculator entry={selected.price || ''} stop={null} target={null} />
+                  <KeyLevelPanel key={selected.symbol} currentPrice={selected.price || 100} levels={selectedLevel ? selectedLevel.levels : {}} onChange={setLevels} />
+                  <RiskCalculator key={selected.symbol} entry={selected.price || ''} stop={null} target={null} />
                 </div>
               )}
             </section>
@@ -110,7 +121,7 @@ export default function App() {
           {active === 'watchlist' && (
             <section>
               <WatchlistManager watchlist={watchlist} onToggle={handleToggleWatchlist} />
-              {watchlist.length && <p>Select symbols from the screener to monitor their setup state.</p>}
+              {watchlist.length > 0 && <p>Select symbols from the screener to monitor their setup state.</p>}
             </section>
           )}
 
@@ -121,8 +132,6 @@ export default function App() {
               <p className="note">Demo data is synthetic and does not represent market data or trading advice.</p>
             </section>
           )}
-
-          {!candidates.length && active === 'screener' && <p>No candidates</p>}
 
           <footer className="page-footer"><span>Tradebuddy</span><span>Readiness: {readinessState.met}/{readinessState.total}</span></footer>
         </main>
