@@ -1,4 +1,14 @@
 import { useEffect, useState } from 'react';
+import StatusBar from './components/StatusBar.jsx';
+import CandidateTable from './components/CandidateTable.jsx';
+import ChecklistPanel from './components/ChecklistPanel.jsx';
+import RiskCalculator from './components/RiskCalculator.jsx';
+import KeyLevelPanel from './components/KeyLevelPanel.jsx';
+import WatchlistManager from './components/WatchlistManager.jsx';
+import CsvImporter from './components/CsvImporter.jsx';
+import { getDemoCandidates, getDemoLevel } from './services/demoProvider.js';
+import { defaultChecks, readiness } from './features/setupAssessment.js';
+import './styles.css';
 
 const pages = [
   { id: 'screener', label: 'Pre-Market Screener', icon: '▦' },
@@ -6,23 +16,32 @@ const pages = [
   { id: 'crypto', label: 'Crypto', icon: '₿', disabled: true },
   { id: 'settings', label: 'Settings', icon: '⚙' },
 ];
+
 function readTheme() {
   try { const value = localStorage.getItem('tradebuddy-theme'); return ['light', 'dark'].includes(value) ? value : 'system'; }
   catch { return 'system'; }
 }
+
 export default function App() {
   const [collapsed, setCollapsed] = useState(() => matchMedia('(max-width: 760px)').matches);
   const [active, setActive] = useState('screener');
   const [preference, setPreference] = useState(readTheme);
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
+  const [selected, setSelected] = useState(null);
+  const [candidates, setCandidates] = useState(getDemoCandidates());
+  const [watchlist, setWatchlist] = useState([]);
+  const [checks, setChecks] = useState(defaultChecks);
+  const [levels, setLevels] = useState({});
   const dark = preference === 'system' ? systemDark : preference === 'dark';
   const page = pages.find(item => item.id === active);
+
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
     const update = event => setSystemDark(event.matches);
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
+
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
     try {
@@ -30,7 +49,22 @@ export default function App() {
       else localStorage.setItem('tradebuddy-theme', preference);
     } catch {}
   }, [dark, preference]);
+
   useEffect(() => { document.title = `${page.label} | Tradebuddy`; }, [page.label]);
+
+  const handleToggleWatchlist = (symbol) => {
+    setWatchlist(prev => prev.some(item => item.symbol === symbol)
+      ? prev.filter(item => item.symbol !== symbol)
+      : [...prev, { symbol, bias: 'neutral' }]);
+  };
+
+  const handleCheck = (id, value) => {
+    setChecks(prev => ({ ...prev, [id]: value }));
+  };
+
+  const selectedLevel = selected ? getDemoLevel(selected.symbol, selected.price || 100) : null;
+  const readinessState = readiness(checks);
+
   return (
     <div className={`app-shell ${collapsed ? 'collapsed' : ''}`}>
       <a className="skip-link" href="#workspace">Skip to workspace</a>
@@ -52,11 +86,45 @@ export default function App() {
         </div>
       </aside>
       <div className="main-column">
-        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-parent">Workspace /</span><span>{page.label}</span></div><span className="status-badge"><span className="status-dot"/>Ready</span></header>
+        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-parent">Workspace /</span><span>{page.label}</span></div><StatusBar /></header>
         <main className="workspace" id="workspace" tabIndex={-1}>
           <section className="page-heading" aria-labelledby="page-title"><p className="eyebrow">YOUR TRADING WORKSPACE</p><h1 id="page-title">{page.label}</h1><p className="page-description">Your edge starts with a clear workspace.</p></section>
-          <section className="dashboard-canvas" aria-label={`${page.label} empty workspace`}><div className="canvas-topline" aria-hidden="true"><i/><i/><i/></div><div className="empty-state"><span className="empty-icon" aria-hidden="true">{page.icon}</span><h2>A clear space. A fresh start.</h2><p>Your {active === 'settings' ? 'workspace preferences' : 'tools and insights'} will live here.</p><span className="empty-caption">No data connected yet</span></div><div className="canvas-footer"><span>Awaiting configuration</span><span className="canvas-note">Built for focus</span></div></section>
-          <footer className="page-footer"><span>Tradebuddy</span><span>Your workspace. Your next move.</span></footer>
+
+          {active === 'screener' && (
+            <section className="dashboard-row">
+              <div className="dashboard-card candidates">
+                <CandidateTable candidates={candidates} onSelect={setSelected} />
+              </div>
+              {selected && (
+                <div className="dashboard-card selected-detail">
+                  <h3>{selected.symbol}</h3>
+                  <p>Gap: {selected.gapPercent == null ? '—' : selected.gapPercent + '%'} · Bias: {selected.bias || '—'}</p>
+                  <ChecklistPanel checks={checks} onChange={handleCheck} />
+                  <KeyLevelPanel currentPrice={selected.price || 100} levels={selectedLevel ? selectedLevel.levels : {}} onChange={setLevels} />
+                  <RiskCalculator entry={selected.price || ''} stop={null} target={null} />
+                </div>
+              )}
+            </section>
+          )}
+
+          {active === 'watchlist' && (
+            <section>
+              <WatchlistManager watchlist={watchlist} onToggle={handleToggleWatchlist} />
+              {watchlist.length && <p>Select symbols from the screener to monitor their setup state.</p>}
+            </section>
+          )}
+
+          {active === 'settings' && (
+            <section>
+              <h3>Data import</h3>
+              <CsvImporter />
+              <p className="note">Demo data is synthetic and does not represent market data or trading advice.</p>
+            </section>
+          )}
+
+          {!candidates.length && active === 'screener' && <p>No candidates</p>}
+
+          <footer className="page-footer"><span>Tradebuddy</span><span>Readiness: {readinessState.met}/{readinessState.total}</span></footer>
         </main>
       </div>
     </div>
