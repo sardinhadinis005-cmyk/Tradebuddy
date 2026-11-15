@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SETTINGS_EVENT, tradierHeaders } from '../api/tradierSettings.js';
 
 export default function StatusBar() {
   const [session, setSession] = useState('unknown');
@@ -6,13 +7,20 @@ export default function StatusBar() {
   const [connected, setConnected] = useState(false);
   const [feed, setFeed] = useState('—');
   const [stale, setStale] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setReloadKey((key) => key + 1);
+    window.addEventListener(SETTINGS_EVENT, bump);
+    return () => window.removeEventListener(SETTINGS_EVENT, bump);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/session', { signal: controller.signal })
-      .then((res) => res.ok ? res.json() : null)
+    fetch('/api/session', { signal: controller.signal, headers: tradierHeaders() })
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!data) return;
+        if (!data) { setConnected(false); return; }
         setSession(data.session || 'unknown');
         setFeed(data.feed || '—');
         setConnected(!!data.connected);
@@ -22,9 +30,9 @@ export default function StatusBar() {
       })
       .catch(() => { /* Leave as unknown while a provider is not configured. */ });
     return () => controller.abort();
-  }, []);
+  }, [reloadKey]);
 
-  const statusText = connected ? (stale ? 'Stale data' : 'Connected') : 'Not connected';
+  const statusText = connected ? (stale ? 'Stale data' : 'Token set') : 'Not connected';
   const className = connected ? (stale ? 'warn' : 'ok') : 'off';
   return (
     <div className="status-bar" role="status" aria-live="polite">

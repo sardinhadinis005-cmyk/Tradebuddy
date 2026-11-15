@@ -1,7 +1,9 @@
+import { tradierHeaders } from './tradierSettings.js';
+
 export async function fetchScan(mode, { signal } = {}) {
   const res = await fetch(`/api/candidates?mode=${encodeURIComponent(mode)}`, {
     signal,
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...tradierHeaders() },
   });
   let body = null;
   try { body = await res.json(); } catch { /* handled below */ }

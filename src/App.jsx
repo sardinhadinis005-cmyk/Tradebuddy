@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import StatusBar from './components/StatusBar.jsx';
 import MoverBoard from './components/MoverBoard.jsx';
+import MoverTicker from './components/MoverTicker.jsx';
 import SourceBar from './components/SourceBar.jsx';
 import FactorList from './components/FactorList.jsx';
 import ChecklistPanel from './components/ChecklistPanel.jsx';
@@ -8,11 +9,14 @@ import RiskCalculator from './components/RiskCalculator.jsx';
 import KeyLevelPanel from './components/KeyLevelPanel.jsx';
 import WatchlistManager from './components/WatchlistManager.jsx';
 import CsvImporter from './components/CsvImporter.jsx';
+import ApiKeySettings from './components/ApiKeySettings.jsx';
 import { getDemoCandidates, getDemoLevel } from './services/demoProvider.js';
 import { fetchScan } from './api/scanClient.js';
+import { SETTINGS_EVENT } from './api/tradierSettings.js';
 import { scanNotice, emptyText } from './features/scanNotice.js';
 import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
+import './polish.css';
 
 const pages = [
   { id: 'screener', label: 'Pre-Market Screener', icon: '▦' },
@@ -61,6 +65,12 @@ export default function App() {
   }, [dark, preference]);
 
   useEffect(() => { document.title = `${page.label} | Tradebuddy`; }, [page.label]);
+
+  useEffect(() => {
+    const reload = () => setReloadKey(key => key + 1);
+    window.addEventListener(SETTINGS_EVENT, reload);
+    return () => window.removeEventListener(SETTINGS_EVENT, reload);
+  }, []);
 
   useEffect(() => {
     setSelected(null);
@@ -119,6 +129,7 @@ export default function App() {
           {active === 'screener' && (
             <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
               <div className="dashboard-card candidates">
+                <MoverTicker candidates={candidates} />
                 <SourceBar source={source} onSource={setSource} onRefresh={() => setReloadKey(key => key + 1)} loading={loading} />
                 <MoverBoard
                   candidates={candidates}
@@ -151,10 +162,13 @@ export default function App() {
           )}
 
           {active === 'settings' && (
-            <section>
-              <h3>Data import</h3>
-              <CsvImporter />
-              <p className="note">Demo data is synthetic and does not represent market data or trading advice.</p>
+            <section className="settings-grid">
+              <ApiKeySettings />
+              <div className="dashboard-card">
+                <h3>Data import</h3>
+                <CsvImporter />
+                <p className="note">Demo data is synthetic and does not represent market data or trading advice.</p>
+              </div>
             </section>
           )}
 
