@@ -10,3 +10,11 @@ command = "npm run build"
 directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
+
+# Not secret. Use the sandbox URL with a sandbox token. For a funded production account,
+# change this to https://api.tradier.com and set the production token.
+[vars]
+TRADIER_BASE_URL = "https://sandbox.tradier.com"
+
+# Set the token as a secret, never in this file:  npx wrangler secret put TRADIER_TOKEN
+# Optional variables: UNIVERSE (comma separated symbols), TOP_N, MIN_GAP, MIN_PRICE, MIN_AVG_VOLUME
