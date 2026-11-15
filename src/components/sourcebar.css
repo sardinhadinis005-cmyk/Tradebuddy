@@ -1,0 +1,6 @@
+.source-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.source-option, .source-refresh { border: 1px solid var(--border); border-radius: 999px; background: var(--bg); color: var(--text); padding: 6px 14px; font-size: 12px; }
+.source-option:hover, .source-refresh:hover:not(:disabled) { background: var(--hover); }
+.source-option.is-active { border-color: var(--green); color: var(--green); font-weight: 650; }
+.source-refresh { margin-left: auto; color: var(--muted); }
+.source-refresh:disabled { opacity: 0.6; }

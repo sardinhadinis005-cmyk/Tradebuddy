@@ -14,6 +14,14 @@ function compactVolume(value) {
   return String(n);
 }
 
+function volumeText(mover) {
+  const rvol = Number(mover.rvol);
+  if (mover.rvol != null && Number.isFinite(rvol)) return `RVOL ${rvol.toFixed(1)}x`;
+  const ratio = Number(mover.pmVolumeRatio);
+  if (mover.pmVolumeRatio != null && Number.isFinite(ratio)) return `Vol ${(ratio * 100).toFixed(1)}% of avg`;
+  return 'RVOL —';
+}
+
 function catalystText(catalyst) {
   if (catalyst === true) return 'Catalyst found (bonus)';
   if (catalyst === false) return 'No catalyst found';
@@ -40,7 +48,7 @@ export default function MoverTile({ mover, selected, watched, onSelect, onToggle
         <span className="mover-price">{fixed(mover.price, 2)}</span>
         <span className="mover-stats">
           <span>Vol {compactVolume(mover.volume)}</span>
-          <span>RVOL {fixed(mover.rvol, 1)}x</span>
+          <span>{volumeText(mover)}</span>
           <span>Spread {fixed(mover.spread, 2)}</span>
         </span>
         <span className="mover-score">{a.met} of {a.factors.length} met · {catalystText(a.catalyst)}</span>

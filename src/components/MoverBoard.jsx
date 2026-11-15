@@ -27,17 +27,23 @@ function Lane({ title, arrow, items, selectedSymbol, watchedSymbols, onSelect, o
   );
 }
 
-export default function MoverBoard({ candidates, selectedSymbol, watchedSymbols = [], onSelect, onToggleWatch, demo = false }) {
+export default function MoverBoard({ candidates, selectedSymbol, watchedSymbols = [], onSelect, onToggleWatch, notice = null, emptyText = 'No candidates yet.' }) {
   const groups = useMemo(() => groupMovers(candidates, DEFAULT_RULES), [candidates]);
   const tiers = TIERS.filter((t) => t.id !== 'U' || groups.U.up.length + groups.U.down.length > 0);
+  const banner = notice ? <p className="board-banner" role="note">{notice}</p> : null;
 
   if (!candidates.length) {
-    return <p className="lane-empty">No candidates yet. Connect a data provider, or use demo data.</p>;
+    return (
+      <div className="board">
+        {banner}
+        <p className="lane-empty">{emptyText}</p>
+      </div>
+    );
   }
 
   return (
     <div className="board">
-      {demo && <p className="board-banner" role="note">Demo data: fictional symbols and synthetic numbers. Not market data.</p>}
+      {banner}
       <p className="board-legend">
         Pre-market quality uses five conditions: momentum, stacked averages, orderly price action, 1H and daily agreement, and reward/risk room. A catalyst adds a bonus of half a point and is never required.
       </p>

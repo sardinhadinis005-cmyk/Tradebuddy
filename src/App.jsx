@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import StatusBar from './components/StatusBar.jsx';
 import MoverBoard from './components/MoverBoard.jsx';
+import SourceBar from './components/SourceBar.jsx';
 import FactorList from './components/FactorList.jsx';
 import ChecklistPanel from './components/ChecklistPanel.jsx';
 import RiskCalculator from './components/RiskCalculator.jsx';
@@ -8,6 +9,8 @@ import KeyLevelPanel from './components/KeyLevelPanel.jsx';
 import WatchlistManager from './components/WatchlistManager.jsx';
 import CsvImporter from './components/CsvImporter.jsx';
 import { getDemoCandidates, getDemoLevel } from './services/demoProvider.js';
+import { fetchScan } from './api/scanClient.js';
+import { scanNotice, emptyText } from './features/scanNotice.js';
 import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
 
@@ -29,14 +32,18 @@ export default function App() {
   const [preference, setPreference] = useState(readTheme);
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
   const [selected, setSelected] = useState(null);
-  const [candidates] = useState(getDemoCandidates);
+  const [demoCandidates] = useState(getDemoCandidates);
+  const [source, setSource] = useState('demo');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [scan, setScan] = useState({ source: null, status: 'loading', candidates: [], meta: null, error: null });
   const [watchlist, setWatchlist] = useState([]);
   const [checks, setChecks] = useState(defaultChecks);
   const [, setLevels] = useState({});
   const dark = preference === 'system' ? systemDark : preference === 'dark';
   const page = pages.find(item => item.id === active);
   const watchedSymbols = watchlist.map(item => item.symbol);
-  const isDemo = candidates.some(item => item.dataQuality === 'demo');
+  const view = scan.source === source ? scan : { status: 'loading', candidates: [], meta: null, error: null };
+  const candidates = source === 'demo' ? demoCandidates : view.candidates;
 
   useEffect(() => {
     const media = matchMedia('(prefers-color-scheme: dark)');
@@ -55,6 +62,20 @@ export default function App() {
 
   useEffect(() => { document.title = `${page.label} | Tradebuddy`; }, [page.label]);
 
+  useEffect(() => {
+    setSelected(null);
+    if (source === 'demo') return undefined;
+    const controller = new AbortController();
+    setScan({ source, status: 'loading', candidates: [], meta: null, error: null });
+    fetchScan(source, { signal: controller.signal })
+      .then(body => setScan({ source, status: 'ready', candidates: body.candidates, meta: body.meta, error: null }))
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        setScan({ source, status: 'error', candidates: [], meta: null, error: error.message });
+      });
+    return () => controller.abort();
+  }, [source, reloadKey]);
+
   const handleToggleWatchlist = (symbol) => {
     setWatchlist(prev => prev.some(item => item.symbol === symbol)
       ? prev.filter(item => item.symbol !== symbol)
@@ -65,8 +86,10 @@ export default function App() {
     setChecks(prev => ({ ...prev, [id]: value }));
   };
 
-  const selectedLevel = selected ? getDemoLevel(selected.symbol, selected.price || 100) : null;
+  const entryPrice = selected ? (selected.refPrice ?? selected.price ?? '') : '';
+  const levelMap = !selected ? {} : selected.levels ? selected.levels : selected.dataQuality === 'demo' ? getDemoLevel(selected.symbol, selected.price || 100).levels : {};
   const readinessState = readiness(checks);
+  const loading = source !== 'demo' && view.status === 'loading';
 
   return (
     <div className={`app-shell ${collapsed ? 'collapsed' : ''}`}>
@@ -96,23 +119,25 @@ export default function App() {
           {active === 'screener' && (
             <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
               <div className="dashboard-card candidates">
+                <SourceBar source={source} onSource={setSource} onRefresh={() => setReloadKey(key => key + 1)} loading={loading} />
                 <MoverBoard
                   candidates={candidates}
                   selectedSymbol={selected ? selected.symbol : null}
                   watchedSymbols={watchedSymbols}
                   onSelect={setSelected}
                   onToggleWatch={handleToggleWatchlist}
-                  demo={isDemo}
+                  notice={scanNotice(source, view)}
+                  emptyText={emptyText(source, view)}
                 />
               </div>
               {selected && (
                 <div className="dashboard-card selected-detail">
                   <h3>{selected.symbol} · Tier {selected.assessment.tier}</h3>
-                  <p>Gap {selected.gapPercent > 0 ? '+' : ''}{selected.gapPercent.toFixed(2)}% · {selected.assessment.direction === 'up' ? 'Up' : 'Down'} move</p>
+                  <p>Gap {selected.gapPercent > 0 ? '+' : ''}{selected.gapPercent.toFixed(2)}% · {selected.assessment.direction === 'up' ? 'Up' : 'Down'} move{selected.quoteTime ? ` · Last trade ${new Date(selected.quoteTime).toLocaleString()}` : ''}</p>
                   <FactorList factors={selected.assessment.factors} />
                   <ChecklistPanel checks={checks} onChange={handleCheck} />
-                  <KeyLevelPanel key={selected.symbol} currentPrice={selected.price || 100} levels={selectedLevel ? selectedLevel.levels : {}} onChange={setLevels} />
-                  <RiskCalculator key={selected.symbol} entry={selected.price || ''} stop={null} target={null} />
+                  <KeyLevelPanel key={selected.symbol} currentPrice={selected.price || 100} levels={levelMap} onChange={setLevels} />
+                  <RiskCalculator key={selected.symbol} entry={entryPrice} stop={null} target={null} />
                 </div>
               )}
             </section>

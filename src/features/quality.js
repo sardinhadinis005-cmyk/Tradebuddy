@@ -1,6 +1,7 @@
 export const DEFAULT_RULES = {
   minGapPct: 3,
   minRvol: 1.5,
+  minPmVolumeRatio: 0.05,
   maxCrossovers: 1,
   minRiskReward: 2,
   assumedStopPct: 1,
@@ -30,19 +31,31 @@ export function assessMover(input, rules = DEFAULT_RULES) {
     ...input,
     gapPercent: toNumber(input.gapPercent),
     rvol: toNumber(input.rvol),
+    pmVolumeRatio: toNumber(input.pmVolumeRatio),
     nextLevelDistancePct: toNumber(input.nextLevelDistancePct),
   };
   const direction = c.gapPercent == null || c.gapPercent === 0 ? 'flat' : c.gapPercent > 0 ? 'up' : 'down';
   const factors = [];
   const add = (id, label, status, detail) => factors.push({ id, label, status, detail });
 
+  // Full-day relative volume when available; otherwise pre-market volume as a share of the average full day.
+  let volumeOk = null;
+  let volumeText = 'Volume not available';
+  if (c.rvol != null) {
+    volumeOk = c.rvol >= rules.minRvol;
+    volumeText = `relative volume ${c.rvol.toFixed(1)}x`;
+  } else if (c.pmVolumeRatio != null) {
+    volumeOk = c.pmVolumeRatio >= rules.minPmVolumeRatio;
+    volumeText = `pre-market volume ${(c.pmVolumeRatio * 100).toFixed(1)}% of an average day`;
+  }
+
   if (c.gapPercent == null) {
     add('momentum', 'Momentum', 'unknown', 'Gap not available');
-  } else if (c.rvol == null) {
-    add('momentum', 'Momentum', Math.abs(c.gapPercent) >= rules.minGapPct ? 'unknown' : 'unmet', 'Relative volume not available');
+  } else if (volumeOk == null) {
+    add('momentum', 'Momentum', Math.abs(c.gapPercent) >= rules.minGapPct ? 'unknown' : 'unmet', volumeText);
   } else {
-    const ok = Math.abs(c.gapPercent) >= rules.minGapPct && c.rvol >= rules.minRvol;
-    add('momentum', 'Momentum', ok ? 'met' : 'unmet', `Gap ${c.gapPercent.toFixed(1)}%, relative volume ${c.rvol.toFixed(1)}x`);
+    const ok = Math.abs(c.gapPercent) >= rules.minGapPct && volumeOk;
+    add('momentum', 'Momentum', ok ? 'met' : 'unmet', `Gap ${c.gapPercent.toFixed(1)}%, ${volumeText}`);
   }
 
   const d = c.daily;
@@ -65,7 +78,7 @@ export function assessMover(input, rules = DEFAULT_RULES) {
   }
 
   if (c.nextLevelDistancePct == null) {
-    add('riskReward', 'Reward/risk room', 'unknown', 'Next key level not available');
+    add('riskReward', 'Reward/risk room', 'unknown', 'No known key level ahead, or levels not available');
   } else {
     const rr = c.nextLevelDistancePct / rules.assumedStopPct;
     add('riskReward', 'Reward/risk room', rr >= rules.minRiskReward ? 'met' : 'unmet',
