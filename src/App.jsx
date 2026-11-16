@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import StatusBar from './components/StatusBar.jsx';
+import MarketClock from './components/MarketClock.jsx';
 import MoverBoard from './components/MoverBoard.jsx';
 import MoverTicker from './components/MoverTicker.jsx';
 import SourceBar from './components/SourceBar.jsx';
+import SelectedStock from './components/SelectedStock.jsx';
 import FactorList from './components/FactorList.jsx';
 import ChecklistPanel from './components/ChecklistPanel.jsx';
 import RiskCalculator from './components/RiskCalculator.jsx';
@@ -14,15 +16,16 @@ import { getDemoCandidates, getDemoLevel } from './services/demoProvider.js';
 import { fetchScan } from './api/scanClient.js';
 import { SETTINGS_EVENT } from './api/tradierSettings.js';
 import { scanNotice, emptyText } from './features/scanNotice.js';
+import { buildKpis } from './features/summary.js';
 import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
 import './polish.css';
 
 const pages = [
-  { id: 'screener', label: 'Pre-Market Screener', icon: '▦' },
-  { id: 'watchlist', label: 'Watchlist', icon: '☆' },
-  { id: 'crypto', label: 'Crypto', icon: '₿', disabled: true },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
+  { id: 'screener', label: 'Pre-Market Screener', icon: '▦', description: 'Biggest pre-market movers, grouped by the quality of the move.' },
+  { id: 'watchlist', label: 'Watchlist', icon: '☆', description: 'The symbols you are keeping an eye on.' },
+  { id: 'crypto', label: 'Crypto', icon: '₿', description: 'Coming soon.', disabled: true },
+  { id: 'settings', label: 'Settings', icon: '⚙', description: 'Connect your market data and manage imports.' },
 ];
 
 function readTheme() {
@@ -100,6 +103,7 @@ export default function App() {
   const levelMap = !selected ? {} : selected.levels ? selected.levels : selected.dataQuality === 'demo' ? getDemoLevel(selected.symbol, selected.price || 100).levels : {};
   const readinessState = readiness(checks);
   const loading = source !== 'demo' && view.status === 'loading';
+  const kpis = active === 'screener' ? buildKpis({ candidates, source, scan: view, watchCount: watchlist.length }) : null;
 
   return (
     <div className={`app-shell ${collapsed ? 'collapsed' : ''}`}>
@@ -122,9 +126,42 @@ export default function App() {
         </div>
       </aside>
       <div className="main-column">
-        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-parent">Workspace /</span><span>{page.label}</span></div><StatusBar /></header>
+        <header className="topbar">
+          <div className="topbar-brand"><span className="brand-mark" aria-hidden="true">↗</span><span className="brand-name">Tradebuddy<span className="accent">.</span></span></div>
+          <nav className="topnav" aria-label="Main">{pages.map(item => (
+            <button key={item.id} className={`topnav-item ${active === item.id ? 'is-active' : ''}`} disabled={item.disabled} onClick={() => setActive(item.id)} aria-current={active === item.id ? 'page' : undefined}>
+              <span className="topnav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>{item.disabled && <span className="topnav-soon">Soon</span>}
+            </button>
+          ))}</nav>
+          <div className="breadcrumb"><span className="breadcrumb-parent">Workspace /</span><span>{page.label}</span></div>
+          <div className="topbar-right">
+            <StatusBar />
+            <div className="topbar-theme">
+              <button type="button" className="theme-button" onClick={() => setPreference(dark ? 'light' : 'dark')} aria-label={`Switch to ${dark ? 'light' : 'dark'} mode`} title={`Switch to ${dark ? 'light' : 'dark'} mode`}>{dark ? '☀' : '☾'}</button>
+              <button type="button" className="theme-button" onClick={() => setPreference('system')} aria-pressed={preference === 'system'} aria-label="Use system theme" title="Use system theme">▣</button>
+            </div>
+            <MarketClock />
+          </div>
+        </header>
         <main className="workspace" id="workspace" tabIndex={-1}>
-          <section className="page-heading" aria-labelledby="page-title"><p className="eyebrow">YOUR TRADING WORKSPACE</p><h1 id="page-title">{page.label}</h1><p className="page-description">Biggest pre-market movers, grouped by the quality of the move.</p></section>
+          <section className={`page-hero ${kpis ? '' : 'is-simple'}`} aria-labelledby="page-title">
+            <div className="hero-text">
+              <p className="eyebrow">YOUR TRADING WORKSPACE</p>
+              <h1 id="page-title">{page.label}</h1>
+              <p className="page-description">{page.description}</p>
+            </div>
+            {kpis && (
+              <div className="kpis">
+                {kpis.map(kpi => (
+                  <div key={kpi.id} className={`kpi ${kpi.tone ? `is-${kpi.tone}` : ''}`}>
+                    <span className="kpi-label">{kpi.label}</span>
+                    <span className="kpi-value">{kpi.value}</span>
+                    <span className="kpi-sub">{kpi.sub}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
 
           {active === 'screener' && (
             <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
@@ -142,13 +179,12 @@ export default function App() {
                 />
               </div>
               {selected && (
-                <div className="dashboard-card selected-detail">
-                  <h3>{selected.symbol} · Tier {selected.assessment.tier}</h3>
-                  <p>Gap {selected.gapPercent > 0 ? '+' : ''}{selected.gapPercent.toFixed(2)}% · {selected.assessment.direction === 'up' ? 'Up' : 'Down'} move{selected.quoteTime ? ` · Last trade ${new Date(selected.quoteTime).toLocaleString()}` : ''}</p>
-                  <FactorList factors={selected.assessment.factors} />
-                  <ChecklistPanel checks={checks} onChange={handleCheck} />
-                  <KeyLevelPanel key={selected.symbol} currentPrice={selected.price || 100} levels={levelMap} onChange={setLevels} />
-                  <RiskCalculator key={selected.symbol} entry={entryPrice} stop={null} target={null} />
+                <div className="detail-rail" key={selected.symbol}>
+                  <SelectedStock mover={selected} onClose={() => setSelected(null)} />
+                  <div className="dashboard-card"><RiskCalculator entry={entryPrice} stop={null} target={null} /></div>
+                  <div className="dashboard-card"><h3 className="rail-title">Why this tier</h3><FactorList factors={selected.assessment.factors} /></div>
+                  <div className="dashboard-card"><ChecklistPanel checks={checks} onChange={handleCheck} /></div>
+                  <div className="dashboard-card"><KeyLevelPanel currentPrice={selected.price || 100} levels={levelMap} onChange={setLevels} /></div>
                 </div>
               )}
             </section>
