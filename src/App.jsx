@@ -20,6 +20,7 @@ import { buildKpis } from './features/summary.js';
 import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
 import './polish.css';
+import './mobile.css';
 
 const pages = [
   { id: 'screener', label: 'Pre-Market Screener', icon: '▦', description: 'Biggest pre-market movers, grouped by the quality of the move.' },
@@ -34,7 +35,7 @@ function readTheme() {
 }
 
 export default function App() {
-  const [collapsed, setCollapsed] = useState(() => matchMedia('(max-width: 760px)').matches);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [active, setActive] = useState('screener');
   const [preference, setPreference] = useState(readTheme);
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
@@ -76,6 +77,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = event => { if (event.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
+  useEffect(() => {
     setSelected(null);
     if (source === 'demo') return undefined;
     const controller = new AbortController();
@@ -88,6 +96,11 @@ export default function App() {
       });
     return () => controller.abort();
   }, [source, reloadKey]);
+
+  const choosePage = (id) => {
+    setActive(id);
+    setMenuOpen(false);
+  };
 
   const handleToggleWatchlist = (symbol) => {
     setWatchlist(prev => prev.some(item => item.symbol === symbol)
@@ -106,30 +119,31 @@ export default function App() {
   const kpis = active === 'screener' ? buildKpis({ candidates, source, scan: view, watchCount: watchlist.length }) : null;
 
   return (
-    <div className={`app-shell ${collapsed ? 'collapsed' : ''}`}>
+    <div className={`app-shell ${menuOpen ? 'menu-open' : ''}`}>
       <a className="skip-link" href="#workspace">Skip to workspace</a>
-      <aside className="sidebar" aria-label="Main navigation">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">↗</span><span className="expanded-only brand-name">Tradebuddy<span className="accent">.</span></span></div>
-        <button className="collapse-button" onClick={() => setCollapsed(!collapsed)} aria-expanded={!collapsed} aria-controls="sidebar-menu" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>{collapsed ? '›' : '‹'}</button>
+      {menuOpen && <button type="button" className="menu-backdrop" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
+      <aside className="sidebar" id="side-drawer" aria-label="Main navigation">
+        <div className="brand"><span className="brand-mark" aria-hidden="true">↗</span><span className="brand-name">Tradebuddy<span className="accent">.</span></span></div>
         <div className="sidebar-menu" id="sidebar-menu">
-          <p className="menu-heading expanded-only">WORKSPACE</p>
+          <p className="menu-heading">WORKSPACE</p>
           <nav className="flex flex-col gap-2" aria-label="Workspace">{pages.map(item => (
-            <button key={item.id} className={`nav-item ${active === item.id ? 'active' : ''}`} disabled={item.disabled} onClick={() => setActive(item.id)} aria-current={active === item.id ? 'page' : undefined} aria-label={item.disabled ? `${item.label} — Coming Soon` : item.label} title={item.disabled ? `${item.label} — Coming Soon` : item.label}>
-              <span className="nav-icon" aria-hidden="true">{item.icon}</span><span className="expanded-only nav-label">{item.label}</span>{item.disabled && <span className="expanded-only soon-badge">Coming Soon</span>}
+            <button key={item.id} className={`nav-item ${active === item.id ? 'active' : ''}`} disabled={item.disabled} onClick={() => choosePage(item.id)} aria-current={active === item.id ? 'page' : undefined} aria-label={item.disabled ? `${item.label} — Coming Soon` : item.label} title={item.disabled ? `${item.label} — Coming Soon` : item.label}>
+              <span className="nav-icon" aria-hidden="true">{item.icon}</span><span className="nav-label">{item.label}</span>{item.disabled && <span className="soon-badge">Coming Soon</span>}
             </button>
           ))}</nav>
         </div>
         <div className="sidebar-footer">
-          <button className="nav-item" onClick={() => setPreference(dark ? 'light' : 'dark')} aria-label={`Switch to ${dark ? 'light' : 'dark'} mode`} title={`Switch to ${dark ? 'light' : 'dark'} mode`}><span className="nav-icon" aria-hidden="true">{dark ? '☀' : '☾'}</span><span className="expanded-only">{dark ? 'Light' : 'Dark'} mode</span></button>
-          <button className="nav-item system-button" onClick={() => setPreference('system')} aria-pressed={preference === 'system'} aria-label="Use system theme" title="Use system theme"><span className="nav-icon" aria-hidden="true">▣</span><span className="expanded-only">Use system theme{preference === 'system' ? ' ✓' : ''}</span></button>
-          <div className="identity"><span className="avatar">TB</span><div className="expanded-only"><p>Personal workspace</p><span>Tradebuddy / v0.1</span></div></div>
+          <button className="nav-item" onClick={() => setPreference(dark ? 'light' : 'dark')} aria-label={`Switch to ${dark ? 'light' : 'dark'} mode`} title={`Switch to ${dark ? 'light' : 'dark'} mode`}><span className="nav-icon" aria-hidden="true">{dark ? '☀' : '☾'}</span><span>{dark ? 'Light' : 'Dark'} mode</span></button>
+          <button className="nav-item system-button" onClick={() => setPreference('system')} aria-pressed={preference === 'system'} aria-label="Use system theme" title="Use system theme"><span className="nav-icon" aria-hidden="true">▣</span><span>Use system theme{preference === 'system' ? ' ✓' : ''}</span></button>
+          <div className="identity"><span className="avatar">TB</span><div><p>Personal workspace</p><span>Tradebuddy / v0.1</span></div></div>
         </div>
       </aside>
       <div className="main-column">
         <header className="topbar">
+          <button type="button" className="menu-toggle" onClick={() => setMenuOpen(open => !open)} aria-expanded={menuOpen} aria-controls="side-drawer" aria-label={menuOpen ? 'Close menu' : 'Open menu'}>{menuOpen ? '×' : '☰'}</button>
           <div className="topbar-brand"><span className="brand-mark" aria-hidden="true">↗</span><span className="brand-name">Tradebuddy<span className="accent">.</span></span></div>
           <nav className="topnav" aria-label="Main">{pages.map(item => (
-            <button key={item.id} className={`topnav-item ${active === item.id ? 'is-active' : ''}`} disabled={item.disabled} onClick={() => setActive(item.id)} aria-current={active === item.id ? 'page' : undefined}>
+            <button key={item.id} className={`topnav-item ${active === item.id ? 'is-active' : ''}`} disabled={item.disabled} onClick={() => choosePage(item.id)} aria-current={active === item.id ? 'page' : undefined}>
               <span className="topnav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>{item.disabled && <span className="topnav-soon">Soon</span>}
             </button>
           ))}</nav>
@@ -179,13 +193,16 @@ export default function App() {
                 />
               </div>
               {selected && (
-                <div className="detail-rail" key={selected.symbol}>
-                  <SelectedStock mover={selected} onClose={() => setSelected(null)} />
-                  <div className="dashboard-card"><RiskCalculator entry={entryPrice} stop={null} target={null} /></div>
-                  <div className="dashboard-card"><h3 className="rail-title">Why this tier</h3><FactorList factors={selected.assessment.factors} /></div>
-                  <div className="dashboard-card"><ChecklistPanel checks={checks} onChange={handleCheck} /></div>
-                  <div className="dashboard-card"><KeyLevelPanel currentPrice={selected.price || 100} levels={levelMap} onChange={setLevels} /></div>
-                </div>
+                <>
+                  <button type="button" className="sheet-backdrop" aria-label="Close details" onClick={() => setSelected(null)} />
+                  <div className="detail-rail" key={selected.symbol}>
+                    <SelectedStock mover={selected} onClose={() => setSelected(null)} />
+                    <div className="dashboard-card"><RiskCalculator entry={entryPrice} stop={null} target={null} /></div>
+                    <div className="dashboard-card"><h3 className="rail-title">Why this tier</h3><FactorList factors={selected.assessment.factors} /></div>
+                    <div className="dashboard-card"><ChecklistPanel checks={checks} onChange={handleCheck} /></div>
+                    <div className="dashboard-card"><KeyLevelPanel currentPrice={selected.price || 100} levels={levelMap} onChange={setLevels} /></div>
+                  </div>
+                </>
               )}
             </section>
           )}

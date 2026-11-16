@@ -1,0 +1,48 @@
+/* Mobile and tablet fixes: slide-in side menu, bottom-sheet stock panel, tighter spacing. Loaded after polish.css. */
+.menu-toggle, .menu-backdrop, .sheet-backdrop { display: none; }
+.menu-toggle { place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--bg); color: var(--text); font-size: 18px; line-height: 1; }
+
+@media (max-width: 900px) {
+  .app-shell { grid-template-columns: minmax(0, 1fr); }
+  .menu-toggle { display: grid; }
+  .sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 40; width: min(280px, 84vw); height: 100dvh; transform: translateX(-100%); visibility: hidden; }
+  .menu-open .sidebar { transform: none; visibility: visible; box-shadow: 8px 0 32px rgba(0, 0, 0, 0.28); }
+  .menu-backdrop { display: block; position: fixed; inset: 0; z-index: 39; border: 0; background: rgba(0, 0, 0, 0.45); }
+  .collapse-button { display: none; }
+  .topbar > .breadcrumb { flex: 1; min-width: 0; }
+}
+
+@media (max-width: 1100px) {
+  .dashboard-row.has-detail { grid-template-columns: minmax(0, 1fr); }
+  .sheet-backdrop { display: block; position: fixed; inset: 0; z-index: 29; border: 0; background: rgba(0, 0, 0, 0.4); }
+  .detail-rail { position: fixed; left: 0; right: 0; bottom: 0; top: auto; z-index: 30; max-height: 84dvh; padding: 14px 12px calc(18px + env(safe-area-inset-bottom)); overflow: auto; overscroll-behavior: contain; border-top: 1px solid var(--border); border-radius: 20px 20px 0 0; background: var(--bg); box-shadow: 0 -14px 40px rgba(0, 0, 0, 0.28); }
+}
+
+@media (max-width: 760px) {
+  .dashboard-card.candidates { padding: 0; border: 0; background: transparent; }
+  .dashboard-card { padding: 14px; border-radius: 14px; }
+  .tier { padding: 12px; border-radius: 14px; }
+  .lanes { gap: 14px; }
+  .tile-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .status-bar span:nth-child(n+3) { display: none; }
+  .market-clock { padding: 5px 10px; }
+  .topbar-right { gap: 10px; }
+  h1 { font-size: 22px; }
+  .page-hero { gap: 14px; margin-bottom: 16px; }
+  .kpis { display: flex; gap: 10px; padding-bottom: 4px; overflow-x: auto; scroll-snap-type: x proximity; }
+  .kpi { flex: 0 0 148px; padding: 12px; scroll-snap-align: start; }
+  .kpi-value { font-size: 18px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes tb-sheet { from { transform: translateY(100%); } }
+  @keyframes tb-fade { from { opacity: 0; } }
+  @media (max-width: 900px) {
+    .sidebar { transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1), visibility 0.28s, box-shadow 0.28s; }
+    .menu-backdrop { animation: tb-fade 0.25s; }
+  }
+  @media (max-width: 1100px) {
+    .detail-rail { animation: tb-sheet 0.32s cubic-bezier(0.2, 0.7, 0.2, 1); }
+    .sheet-backdrop { animation: tb-fade 0.25s; }
+  }
+}
