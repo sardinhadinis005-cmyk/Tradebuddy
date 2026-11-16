@@ -1,0 +1,31 @@
+.tb-identity { display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0; color: var(--text); white-space: nowrap; }
+.tb-emblem { position: relative; display: inline-block; width: 40px; height: 40px; flex: 0 0 40px; perspective: 180px; color: #68daa0; background: #101419; border-radius: 11px; }
+.tb-form, .tb-half, .tb-half svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tb-half { backface-visibility: hidden; transform-origin: 50% 50%; }
+.tb-left { clip-path: inset(0 50% 0 0); }
+.tb-right { clip-path: inset(0 0 0 50%); }
+.tb-monogram .tb-half { opacity: 1; transform: rotateY(0); }
+.tb-abstract .tb-left { opacity: 0; transform: rotateY(-90deg); }
+.tb-abstract .tb-right { opacity: 0; transform: rotateY(90deg); }
+.tb-word { display: inline-block; overflow: hidden; max-width: 130px; opacity: 1; font-size: 22px; font-weight: 700; letter-spacing: -0.9px; vertical-align: middle; }
+@media (max-width: 900px) {
+  .topbar .topbar-brand { display: flex; min-width: 0; }
+  .topbar > .breadcrumb { display: none; }
+  .app-shell:not(.menu-open) .tb-monogram .tb-left { opacity: 0; transform: rotateY(90deg); }
+  .app-shell:not(.menu-open) .tb-monogram .tb-right { opacity: 0; transform: rotateY(-90deg); }
+  .app-shell:not(.menu-open) .tb-abstract .tb-half { opacity: 1; transform: rotateY(0); }
+  .app-shell:not(.menu-open) .tb-word { max-width: 0; opacity: 0; }
+  .menu-open .topbar .topbar-right { display: none; }
+}
+@media (prefers-reduced-motion: no-preference) and (max-width: 900px) {
+  .tb-half { transition: transform 200ms ease-in-out, opacity 160ms ease-in-out; }
+  .tb-monogram .tb-left { transition-delay: 200ms; }
+  .tb-monogram .tb-right { transition-delay: 280ms; }
+  .tb-abstract .tb-left { transition-delay: 0ms; }
+  .tb-abstract .tb-right { transition-delay: 80ms; }
+  .app-shell:not(.menu-open) .tb-monogram .tb-left { transition-delay: 0ms; }
+  .app-shell:not(.menu-open) .tb-monogram .tb-right { transition-delay: 80ms; }
+  .app-shell:not(.menu-open) .tb-abstract .tb-left { transition-delay: 200ms; }
+  .app-shell:not(.menu-open) .tb-abstract .tb-right { transition-delay: 280ms; }
+  .tb-word { transition: max-width 320ms ease, opacity 200ms ease; }
+}

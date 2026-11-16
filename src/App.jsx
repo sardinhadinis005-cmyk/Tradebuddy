@@ -21,6 +21,7 @@ import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
 import './polish.css';
 import './mobile.css';
+import Brand from './components/Brand.jsx';
 
 const pages = [
   { id: 'screener', label: 'Pre-Market Screener', icon: '▦', description: 'Biggest pre-market movers, grouped by the quality of the move.' },
@@ -123,7 +124,7 @@ export default function App() {
       <a className="skip-link" href="#workspace">Skip to workspace</a>
       {menuOpen && <button type="button" className="menu-backdrop" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
       <aside className="sidebar" id="side-drawer" aria-label="Main navigation">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">↗</span><span className="brand-name">Tradebuddy<span className="accent">.</span></span></div>
+        <div className="brand"><Brand /></div>
         <div className="sidebar-menu" id="sidebar-menu">
           <p className="menu-heading">WORKSPACE</p>
           <nav className="flex flex-col gap-2" aria-label="Workspace">{pages.map(item => (
@@ -141,7 +142,7 @@ export default function App() {
       <div className="main-column">
         <header className="topbar">
           <button type="button" className="menu-toggle" onClick={() => setMenuOpen(open => !open)} aria-expanded={menuOpen} aria-controls="side-drawer" aria-label={menuOpen ? 'Close menu' : 'Open menu'}>{menuOpen ? '×' : '☰'}</button>
-          <div className="topbar-brand"><span className="brand-mark" aria-hidden="true">↗</span><span className="brand-name">Tradebuddy<span className="accent">.</span></span></div>
+          <div className="topbar-brand"><Brand /></div>
           <nav className="topnav" aria-label="Main">{pages.map(item => (
             <button key={item.id} className={`topnav-item ${active === item.id ? 'is-active' : ''}`} disabled={item.disabled} onClick={() => choosePage(item.id)} aria-current={active === item.id ? 'page' : undefined}>
               <span className="topnav-icon" aria-hidden="true">{item.icon}</span><span>{item.label}</span>{item.disabled && <span className="topnav-soon">Soon</span>}
