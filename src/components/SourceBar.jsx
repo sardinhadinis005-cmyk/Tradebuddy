@@ -1,8 +1,8 @@
 import './sourcebar.css';
 
-export default function SourceBar({ source, onSource, onRefresh, loading, liveLabel = 'Live' }) {
+export default function SourceBar({ source, onSource, onRefresh, loading, liveLabel = 'Live', showDemo = false }) {
   const options = [
-    { id: 'demo', label: 'Demo' },
+    ...(showDemo ? [{ id: 'demo', label: 'Demo' }] : []),
     { id: 'live', label: liveLabel },
     { id: 'review', label: 'Last session' },
   ];

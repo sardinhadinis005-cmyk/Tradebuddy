@@ -28,10 +28,12 @@ async function loadKeys(team, fetchImpl, nowMs, force) {
 export const clearAccessKeyCache = () => keyCache.clear();
 
 export async function authenticate(request, env, { fetchImpl = (...a) => fetch(...a), nowMs = Date.now() } = {}) {
-  const team = String(env.TEAM_DOMAIN ?? '').replace(/\/+$/, '');
-  if (!TEAM_PATTERN.test(team) || !env.POLICY_AUD) {
-    return fail(503, 'Sign-in protection is not set up yet. Add TEAM_DOMAIN and POLICY_AUD to the Worker, then reload.');
-  }
+  const rawTeam = String(env.TEAM_DOMAIN ?? '').trim();
+  const team = rawTeam.replace(/\/+$/, '');
+  const audience = String(env.POLICY_AUD ?? '').trim();
+  if (!rawTeam) return fail(503, 'Sign-in protection is not set up: the Worker has no TEAM_DOMAIN value. Add it as a secret, then reload.');
+  if (!TEAM_PATTERN.test(team)) return fail(503, 'TEAM_DOMAIN is set but is not in the form https://<team>.cloudflareaccess.com (it needs https:// and no path). Fix it, then reload.');
+  if (!audience) return fail(503, 'Sign-in protection is not set up: the Worker has no POLICY_AUD value. Add it as a secret, then reload.');
   const token = request.headers.get('Cf-Access-Jwt-Assertion');
   if (!token) return fail(401, 'Sign in required. Reload the page to sign in.');
   const parts = token.split('.');
@@ -53,7 +55,7 @@ export async function authenticate(request, env, { fetchImpl = (...a) => fetch(.
     if (!valid) throw new Error('signature');
     const nowSec = Math.floor(nowMs / 1000);
     const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-    if (payload.iss !== team || !audiences.includes(env.POLICY_AUD)) throw new Error('claims');
+    if (payload.iss !== team || !audiences.includes(audience)) throw new Error('claims');
     if (typeof payload.exp !== 'number' || payload.exp < nowSec - LEEWAY_SECONDS) throw new Error('expired');
     if (typeof payload.nbf === 'number' && payload.nbf > nowSec + LEEWAY_SECONDS) throw new Error('early');
     const email = String(payload.email ?? '').trim().toLowerCase();

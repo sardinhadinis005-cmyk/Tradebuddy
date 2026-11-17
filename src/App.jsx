@@ -45,7 +45,7 @@ export default function App() {
   const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
   const [selected, setSelected] = useState(null);
   const [demoCandidates] = useState(getDemoCandidates);
-  const [source, setSource] = useState('demo');
+  const [source, setSource] = useState('live');
   const [reloadKey, setReloadKey] = useState(0);
   const [scan, setScan] = useState({ source: null, status: 'loading', candidates: [], meta: null, error: null });
   const [watchlist, setWatchlist] = useState([]);
@@ -188,7 +188,7 @@ export default function App() {
             <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
               <div className="dashboard-card candidates">
                 <MoverTicker candidates={candidates} />
-                <SourceBar source={source} onSource={setSource} onRefresh={() => setReloadKey(key => key + 1)} loading={loading} liveLabel={sourceLabel} />
+                <SourceBar source={source} onSource={setSource} onRefresh={() => setReloadKey(key => key + 1)} loading={loading} liveLabel={sourceLabel} showDemo={source === 'demo'} />
                 <MoverBoard candidates={candidates} selectedSymbol={selected ? selected.symbol : null} watchedSymbols={watchedSymbols} onSelect={setSelected} onToggleWatch={handleToggleWatchlist} notice={scanNotice(source, view)} emptyText={emptyText(source, view)} />
               </div>
               {selected && <>
@@ -208,6 +208,11 @@ export default function App() {
             <section className="settings-grid">
               <ApiKeySettings />
               <div className="dashboard-card"><h3>Data import</h3><CsvImporter /><p className="note">Demo data is synthetic and does not represent market data or trading advice.</p></div>
+              <div className="dashboard-card">
+                <h3>Demo data</h3>
+                <p className="note">Fictional symbols and synthetic numbers for trying the dashboard without a market data key.</p>
+                <button type="button" className="settings-button" onClick={() => { setSource('demo'); choosePage('screener'); }}>Show demo data</button>
+              </div>
               <DataSources />
             </section>
           )}
