@@ -1,4 +1,4 @@
-import { authenticate } from './access.js';
+import { authenticate } from './machineAuth.js';
 import { draftStore } from './draftStore.js';
 
 const tools = [
