@@ -52,9 +52,9 @@ export function createTradier(env, fetchImpl = (...args) => fetch(...args)) {
       return toArray(data?.history?.day);
     },
 
-    async timesales(symbol, startDate, endDate) {
+    async timesales(symbol, startDate, endDate, interval = '15min') {
       const data = await call('/markets/timesales', {
-        params: { symbol, interval: '15min', start: `${startDate} 09:30`, end: `${endDate} 16:00`, session_filter: 'open' },
+        params: { symbol, interval, start: `${startDate} 09:30`, end: `${endDate} 16:00`, session_filter: 'open' },
       });
       return toArray(data?.series?.data);
     },

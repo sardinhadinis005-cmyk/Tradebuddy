@@ -3,6 +3,7 @@ import { DEFAULT_UNIVERSE } from './universe.js';
 import { etParts, shiftDate } from './time.js';
 import { dailyInfo, hourlyCloses, nearestLevelDistancePct, num, round } from './analysis.js';
 import { maState } from '../src/features/indicators.js';
+import { detectRetracement } from '../src/features/retracement.js';
 import { assessTiming, REFERENCE_SYMBOLS } from './timing.js';
 
 // Free Workers plans allow 50 outbound requests per invocation. Stay below that.
@@ -148,9 +149,10 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
   let barFailures = 0;
   const dataQuality = mode === 'review' ? 'review' : timing.timing === 'delayed' ? 'delayed' : timing.timing === 'realtime' ? 'live' : 'unverified';
   const candidates = await mapPool(rows, POOL_SIZE, async (row) => {
+    // 5-minute bars feed both the hourly trend and the retracement check, so no extra requests are needed.
     const [hist, series] = await Promise.allSettled([
       tradier.history(row.symbol, shiftDate(sessionDate, -320), sessionDate),
-      tradier.timesales(row.symbol, shiftDate(sessionDate, -12), sessionDate),
+      tradier.timesales(row.symbol, shiftDate(sessionDate, -12), sessionDate, '5min'),
     ]);
     for (const r of [hist, series]) if (r.status === 'rejected' && isFatal(r.reason)) throw r.reason;
     if (hist.status === 'rejected' || series.status === 'rejected') barFailures++;
@@ -161,6 +163,7 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
     const avgVolume = daily?.avgVolume ?? null;
     const volumeRatio = avgVolume && row.volume != null ? row.volume / avgVolume : null;
     const spread = mode === 'live' && row.bid > 0 && row.ask >= row.bid ? round(row.ask - row.bid, 3) : null;
+    const retracement = mode === 'live' && series.status === 'fulfilled' ? detectRetracement(series.value, sessionDate, direction) : null;
 
     return {
       symbol: row.symbol,
@@ -178,6 +181,7 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
       hourly: closes.length >= 25 ? maState(closes) : null,
       levels: daily?.levels ?? {},
       nextLevelDistancePct: daily && daily.bars > 0 ? round(nearestLevelDistancePct(daily.levels, row.ref, direction)) : null,
+      retracement,
       dataQuality,
       feed,
       delayMinutes: timing.delayMinutes,

@@ -14,13 +14,17 @@ import CsvImporter from './components/CsvImporter.jsx';
 import ApiKeySettings from './components/ApiKeySettings.jsx';
 import ApiKeyBanner from './components/ApiKeyBanner.jsx';
 import DataSources from './components/DataSources.jsx';
+import OpportunityAlert from './components/OpportunityAlert.jsx';
+import RetracementCard from './components/RetracementCard.jsx';
 import { getDemoCandidates, getDemoLevel } from './services/demoProvider.js';
 import { fetchScan } from './api/scanClient.js';
 import { SETTINGS_EVENT } from './api/tradierSettings.js';
 import { scanNotice, emptyText } from './features/scanNotice.js';
 import { buildKpis } from './features/summary.js';
 import { liveLabel } from './features/feedLabel.js';
+import { assessMover } from './features/quality.js';
 import useAccount from './features/useAccount.js';
+import useOpportunities from './features/useOpportunities.js';
 import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
 import './polish.css';
@@ -57,6 +61,7 @@ export default function App() {
   const watchedSymbols = watchlist.map(item => item.symbol);
   const view = scan.source === source ? scan : { status: 'loading', candidates: [], meta: null, error: null };
   const candidates = source === 'demo' ? demoCandidates : view.candidates;
+  const opportunities = useOpportunities(candidates, view.meta ? view.meta.sessionDate : '', source === 'live' && view.status === 'ready');
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     document.getElementById('brand-menu-toggle')?.focus({ preventScroll: true });
@@ -125,6 +130,10 @@ export default function App() {
   }, [source, reloadKey]);
 
   const choosePage = id => { setActive(id); closeMenu(); };
+  const openOpportunity = symbol => {
+    const found = candidates.find(item => item.symbol === symbol);
+    if (found) setSelected({ ...found, assessment: assessMover(found) });
+  };
   const handleToggleWatchlist = symbol => {
     setWatchlist(prev => prev.some(item => item.symbol === symbol)
       ? prev.filter(item => item.symbol !== symbol)
@@ -184,6 +193,7 @@ export default function App() {
             ))}</div>}
           </section>
           {active === 'screener' && <ApiKeyBanner state={accountState} onOpenSettings={() => choosePage('settings')} />}
+          {active === 'screener' && <OpportunityAlert items={opportunities.fresh} onOpen={openOpportunity} onDismiss={opportunities.dismiss} />}
           {active === 'screener' && (
             <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
               <div className="dashboard-card candidates">
@@ -195,6 +205,7 @@ export default function App() {
                 <button type="button" className="sheet-backdrop" aria-label="Close details" onClick={() => setSelected(null)} />
                 <div className="detail-rail" key={selected.symbol}>
                   <SelectedStock mover={selected} onClose={() => setSelected(null)} />
+                  <RetracementCard retracement={selected.retracement} />
                   <div className="dashboard-card"><RiskCalculator entry={entryPrice} stop={null} target={null} /></div>
                   <div className="dashboard-card"><h3 className="rail-title">Why this tier</h3><FactorList factors={selected.assessment.factors} /></div>
                   <div className="dashboard-card"><ChecklistPanel checks={checks} onChange={handleCheck} /></div>
