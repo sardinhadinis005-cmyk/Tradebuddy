@@ -1,3 +1,5 @@
+// Older versions kept the token in this browser. Keys now live encrypted in the signed-in account;
+// these helpers remain only so an old browser-saved key can be moved over and then removed.
 const KEY = 'tradebuddy-tradier';
 export const SETTINGS_EVENT = 'tradebuddy-settings-changed';
 const TOKEN_PATTERN = /^[A-Za-z0-9._~+\/=-]{8,200}$/;
@@ -23,23 +25,10 @@ export function loadTradierSettings() {
   return null;
 }
 
-export function saveTradierSettings({ token, environment }) {
-  const value = { token: String(token).trim(), environment: environment === 'production' ? 'production' : 'sandbox' };
-  try {
-    localStorage.setItem(KEY, JSON.stringify(value));
-  } catch {
-    throw new Error('This browser blocked saving the token (private mode or disabled storage).');
-  }
-  window.dispatchEvent(new Event(SETTINGS_EVENT));
-  return value;
-}
-
 export function clearTradierSettings() {
   try { localStorage.removeItem(KEY); } catch { /* nothing to remove */ }
   window.dispatchEvent(new Event(SETTINGS_EVENT));
 }
 
-export function tradierHeaders() {
-  const saved = loadTradierSettings();
-  return saved ? { 'X-Tradier-Token': saved.token, 'X-Tradier-Env': saved.environment } : {};
-}
+// Tokens are no longer sent from the browser with each request.
+export const tradierHeaders = () => ({});

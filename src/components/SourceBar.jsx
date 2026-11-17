@@ -1,15 +1,14 @@
 import './sourcebar.css';
 
-const OPTIONS = [
-  { id: 'demo', label: 'Demo' },
-  { id: 'live', label: 'Live (delayed)' },
-  { id: 'review', label: 'Last session' },
-];
-
-export default function SourceBar({ source, onSource, onRefresh, loading }) {
+export default function SourceBar({ source, onSource, onRefresh, loading, liveLabel = 'Live' }) {
+  const options = [
+    { id: 'demo', label: 'Demo' },
+    { id: 'live', label: liveLabel },
+    { id: 'review', label: 'Last session' },
+  ];
   return (
     <div className="source-bar" role="group" aria-label="Data source">
-      {OPTIONS.map((option) => (
+      {options.map((option) => (
         <button
           key={option.id}
           type="button"

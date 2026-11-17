@@ -12,11 +12,15 @@ import KeyLevelPanel from './components/KeyLevelPanel.jsx';
 import WatchlistManager from './components/WatchlistManager.jsx';
 import CsvImporter from './components/CsvImporter.jsx';
 import ApiKeySettings from './components/ApiKeySettings.jsx';
+import ApiKeyBanner from './components/ApiKeyBanner.jsx';
+import DataSources from './components/DataSources.jsx';
 import { getDemoCandidates, getDemoLevel } from './services/demoProvider.js';
 import { fetchScan } from './api/scanClient.js';
 import { SETTINGS_EVENT } from './api/tradierSettings.js';
 import { scanNotice, emptyText } from './features/scanNotice.js';
 import { buildKpis } from './features/summary.js';
+import { liveLabel } from './features/feedLabel.js';
+import useAccount from './features/useAccount.js';
 import { defaultChecks, readiness } from './features/setupAssessment.js';
 import './styles.css';
 import './polish.css';
@@ -27,7 +31,7 @@ const pages = [
   { id: 'screener', label: 'Pre-Market Screener', icon: '▦', description: 'Biggest pre-market movers, grouped by the quality of the move.' },
   { id: 'watchlist', label: 'Watchlist', icon: '☆', description: 'The symbols you are keeping an eye on.' },
   { id: 'crypto', label: 'Crypto', icon: '₿', description: 'Coming soon.', disabled: true },
-  { id: 'settings', label: 'Settings', icon: '⚙', description: 'Connect your market data and manage imports.' },
+  { id: 'settings', label: 'Settings', icon: '⚙', description: 'Your account, market data keys and data sources.' },
 ];
 function readTheme() {
   try { const value = localStorage.getItem('tradebuddy-theme'); return ['light', 'dark'].includes(value) ? value : 'system'; }
@@ -47,6 +51,7 @@ export default function App() {
   const [watchlist, setWatchlist] = useState([]);
   const [checks, setChecks] = useState(defaultChecks);
   const [, setLevels] = useState({});
+  const accountState = useAccount();
   const dark = preference === 'system' ? systemDark : preference === 'dark';
   const page = pages.find(item => item.id === active);
   const watchedSymbols = watchlist.map(item => item.symbol);
@@ -131,6 +136,7 @@ export default function App() {
   const readinessState = readiness(checks);
   const loading = source !== 'demo' && view.status === 'loading';
   const kpis = active === 'screener' ? buildKpis({ candidates, source, scan: view, watchCount: watchlist.length }) : null;
+  const sourceLabel = liveLabel({ account: accountState.account, scan: source === 'demo' ? null : view });
 
   return (
     <div className={`app-shell ${menuOpen ? 'menu-open' : ''}`}>
@@ -149,7 +155,7 @@ export default function App() {
         <div className="sidebar-footer">
           <button className="nav-item" onClick={() => setPreference(dark ? 'light' : 'dark')} aria-label={`Switch to ${dark ? 'light' : 'dark'} mode`} title={`Switch to ${dark ? 'light' : 'dark'} mode`}><span className="nav-icon" aria-hidden="true">{dark ? '☀' : '☾'}</span><span>{dark ? 'Light' : 'Dark'} mode</span></button>
           <button className="nav-item system-button" onClick={() => setPreference('system')} aria-pressed={preference === 'system'} aria-label="Use system theme" title="Use system theme"><span className="nav-icon" aria-hidden="true">▣</span><span>Use system theme{preference === 'system' ? ' ✓' : ''}</span></button>
-          <div className="identity"><span className="avatar">TB</span><div><p>Personal workspace</p><span>Tradebuddy / v0.1</span></div></div>
+          <div className="identity"><span className="avatar">TB</span><div><p>{accountState.account ? accountState.account.email : 'Personal workspace'}</p><span>Tradebuddy / v0.1</span></div></div>
         </div>
       </aside>
       <div className="main-column">
@@ -177,11 +183,12 @@ export default function App() {
               <div key={kpi.id} className={`kpi ${kpi.tone ? `is-${kpi.tone}` : ''}`}><span className="kpi-label">{kpi.label}</span><span className="kpi-value">{kpi.value}</span><span className="kpi-sub">{kpi.sub}</span></div>
             ))}</div>}
           </section>
+          {active === 'screener' && <ApiKeyBanner state={accountState} onOpenSettings={() => choosePage('settings')} />}
           {active === 'screener' && (
             <section className={`dashboard-row ${selected ? 'has-detail' : ''}`}>
               <div className="dashboard-card candidates">
                 <MoverTicker candidates={candidates} />
-                <SourceBar source={source} onSource={setSource} onRefresh={() => setReloadKey(key => key + 1)} loading={loading} />
+                <SourceBar source={source} onSource={setSource} onRefresh={() => setReloadKey(key => key + 1)} loading={loading} liveLabel={sourceLabel} />
                 <MoverBoard candidates={candidates} selectedSymbol={selected ? selected.symbol : null} watchedSymbols={watchedSymbols} onSelect={setSelected} onToggleWatch={handleToggleWatchlist} notice={scanNotice(source, view)} emptyText={emptyText(source, view)} />
               </div>
               {selected && <>
@@ -197,7 +204,13 @@ export default function App() {
             </section>
           )}
           {active === 'watchlist' && <section><WatchlistManager watchlist={watchlist} onToggle={handleToggleWatchlist} />{watchlist.length > 0 && <p>Select symbols from the screener to monitor their setup state.</p>}</section>}
-          {active === 'settings' && <section className="settings-grid"><ApiKeySettings /><div className="dashboard-card"><h3>Data import</h3><CsvImporter /><p className="note">Demo data is synthetic and does not represent market data or trading advice.</p></div></section>}
+          {active === 'settings' && (
+            <section className="settings-grid">
+              <ApiKeySettings />
+              <div className="dashboard-card"><h3>Data import</h3><CsvImporter /><p className="note">Demo data is synthetic and does not represent market data or trading advice.</p></div>
+              <DataSources />
+            </section>
+          )}
           <footer className="page-footer"><span>Tradebuddy</span><span>Readiness: {readinessState.met}/{readinessState.total}</span></footer>
         </main>
       </div>

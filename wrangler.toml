@@ -11,10 +11,16 @@ directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
-# Not secret. Use the sandbox URL with a sandbox token. For a funded production account,
-# change this to https://api.tradier.com and set the production token.
+# Not secret. Only used by the optional shared-token mode (ALLOW_SHARED_TOKEN=true).
 [vars]
 TRADIER_BASE_URL = "https://sandbox.tradier.com"
 
-# Set the token as a secret, never in this file:  npx wrangler secret put TRADIER_TOKEN
-# Optional variables: UNIVERSE (comma separated symbols), TOP_N, MIN_GAP, MIN_PRICE, MIN_AVG_VOLUME
+# Per-user encrypted settings. Wrangler creates this KV namespace on deploy if it does not exist.
+[[kv_namespaces]]
+binding = "SETTINGS"
+
+# Secrets (set as type Secret in the dashboard, or with: npx wrangler secret put NAME):
+#   SETTINGS_SECRET  a random string of 32+ characters that encrypts saved keys
+#   TEAM_DOMAIN      https://<your-team>.cloudflareaccess.com
+#   POLICY_AUD       the Application Audience (AUD) tag of the Access application
+# See docs/ACCOUNT_SETUP.md.

@@ -3,6 +3,7 @@ import { DEFAULT_UNIVERSE } from './universe.js';
 import { etParts, shiftDate } from './time.js';
 import { dailyInfo, hourlyCloses, nearestLevelDistancePct, num, round } from './analysis.js';
 import { maState } from '../src/features/indicators.js';
+import { assessTiming, REFERENCE_SYMBOLS } from './timing.js';
 
 // Free Workers plans allow 50 outbound requests per invocation. Stay below that.
 const SUBREQUEST_BUDGET = 48;
@@ -68,12 +69,13 @@ const isFatal = (reason) => reason && [401, 403, 429].includes(reason.status);
 export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() }) {
   const sandbox = !env.TRADIER_BASE_URL || env.TRADIER_BASE_URL.includes('sandbox');
   const feed = sandbox ? 'Tradier sandbox' : 'Tradier';
-  const delayMinutes = sandbox ? 15 : null;
   const meta = {
     mode,
     configured: Boolean(env.TRADIER_TOKEN),
     feed,
-    delayMinutes,
+    timing: null,
+    delayMinutes: null,
+    timingBasis: null,
     sessionDate: null,
     generatedAt: now.toISOString(),
     universeSize: 0,
@@ -81,7 +83,7 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
     notes: [],
   };
   if (!env.TRADIER_TOKEN) {
-    meta.notes.push('No market data token is configured. Set the TRADIER_TOKEN secret on the Worker, or use demo data.');
+    meta.notes.push('No market data key is saved for your account. Add your Tradier key in Settings, or use demo data.');
     return { meta, candidates: [] };
   }
 
@@ -93,10 +95,23 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
   const minPrice = num(env.MIN_PRICE) ?? 1;
   const minAvgVolume = num(env.MIN_AVG_VOLUME) ?? 200000;
   const batches = Math.ceil(universe.length / 100);
-  const topN = Math.max(0, Math.min(num(env.TOP_N) ?? 20, Math.floor((SUBREQUEST_BUDGET - batches) / 2)));
+  // One request is held back in case the delay check needs its own reference quotes.
+  const topN = Math.max(0, Math.min(num(env.TOP_N) ?? 20, Math.floor((SUBREQUEST_BUDGET - batches - 1) / 2)));
 
   const { quotes, unmatched } = await tradier.quotes(universe);
   if (unmatched.length) meta.notes.push(`${unmatched.length} symbol(s) were not recognized and were skipped.`);
+
+  let timing = assessTiming({ sandbox, quotes, now });
+  if (timing.needsReference) {
+    try {
+      timing = assessTiming({ sandbox, quotes: (await tradier.quotes(REFERENCE_SYMBOLS)).quotes, now });
+    } catch (error) {
+      if (isFatal(error)) throw error;
+    }
+  }
+  meta.timing = timing.timing;
+  meta.delayMinutes = timing.delayMinutes;
+  meta.timingBasis = timing.basis;
 
   let rows = quotes
     .map((q) => rowFromQuote(q, mode))
@@ -131,6 +146,7 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
   }
 
   let barFailures = 0;
+  const dataQuality = mode === 'review' ? 'review' : timing.timing === 'delayed' ? 'delayed' : timing.timing === 'realtime' ? 'live' : 'unverified';
   const candidates = await mapPool(rows, POOL_SIZE, async (row) => {
     const [hist, series] = await Promise.allSettled([
       tradier.history(row.symbol, shiftDate(sessionDate, -320), sessionDate),
@@ -162,9 +178,9 @@ export async function runScan({ env, mode = 'live', fetchImpl, now = new Date() 
       hourly: closes.length >= 25 ? maState(closes) : null,
       levels: daily?.levels ?? {},
       nextLevelDistancePct: daily && daily.bars > 0 ? round(nearestLevelDistancePct(daily.levels, row.ref, direction)) : null,
-      dataQuality: mode === 'review' ? 'review' : sandbox ? 'delayed' : 'live',
+      dataQuality,
       feed,
-      delayMinutes,
+      delayMinutes: timing.delayMinutes,
       quoteTime: row.tradeMs ? new Date(row.tradeMs).toISOString() : null,
       sessionDate,
       updated: now.toISOString(),

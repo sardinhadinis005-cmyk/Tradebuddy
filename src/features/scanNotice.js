@@ -6,12 +6,14 @@ export function scanNotice(source, scan) {
   if (!m) return null;
   const notes = Array.isArray(m.notes) ? m.notes : [];
   if (!m.configured) return notes.join(' ');
-  const delay = m.delayMinutes ? `, delayed about ${m.delayMinutes} minutes` : '';
   const time = m.generatedAt ? new Date(m.generatedAt).toLocaleTimeString() : '';
-  const head = source === 'review'
-    ? `Review of the ${m.sessionDate} regular session (${m.feed}${delay}). Gap is the open versus the previous close, and volume is for the whole day, not pre-market.`
-    : `${m.feed}${delay}. Updated ${time}.`;
-  return [head, ...notes].join(' ');
+  if (source === 'review') {
+    return [`Review of the ${m.sessionDate} regular session (${m.feed}). Gap is the open versus the previous close, and volume is for the whole day, not pre-market.`, ...notes].join(' ');
+  }
+  const timing = m.timing === 'delayed' ? `, delayed about ${m.delayMinutes ?? 15} minutes`
+    : m.timing === 'realtime' ? ', real-time'
+    : ', delay could not be verified';
+  return [`${m.feed}${timing}. Updated ${time}.`, ...notes].join(' ');
 }
 
 export function emptyText(source, scan) {

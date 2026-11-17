@@ -22,10 +22,13 @@ export function feedKpi(source, scan) {
   if (scan.status === 'loading') return { value: 'Loading…', sub: 'Fetching data' };
   if (scan.status === 'error') return { value: 'Error', sub: 'See the note below' };
   const meta = scan.meta;
-  if (!meta || !meta.configured) return { value: 'Not set up', sub: 'Add a token in Settings' };
+  if (!meta || !meta.configured) return { value: 'No API key', sub: 'Add one in Settings' };
   if (source === 'review') return { value: 'Last session', sub: meta.sessionDate || '' };
   const time = meta.generatedAt ? new Date(meta.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-  return { value: meta.delayMinutes ? `Delayed ${meta.delayMinutes} min` : 'Live', sub: time ? `Updated ${time}` : '' };
+  const updated = time ? `Updated ${time}` : '';
+  if (meta.timing === 'delayed') return { value: `Delayed ${meta.delayMinutes ?? 15} min`, sub: updated };
+  if (meta.timing === 'realtime') return { value: 'Real-time', sub: updated };
+  return { value: 'Live', sub: updated ? `Delay unverified · ${updated}` : 'Delay unverified' };
 }
 
 export function buildKpis({ candidates, source, scan, watchCount }) {
