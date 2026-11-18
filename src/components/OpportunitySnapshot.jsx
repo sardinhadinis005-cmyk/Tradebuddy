@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { buildOpportunitySnapshot } from '../features/opportunitySnapshot.js';
+import PlanTrade from './PlanTrade.jsx';
 
 export default function OpportunitySnapshot({ mover }) {
   const snapshot = useMemo(() => buildOpportunitySnapshot(mover), [mover]);
@@ -17,6 +18,7 @@ export default function OpportunitySnapshot({ mover }) {
         <p>Snapshot captured {new Date(snapshot.capturedAt).toLocaleString()}. This panel updates with the stock data; it is not saved history.</p>
         <p>{snapshot.quoteTime ? `Quote timestamp: ${new Date(snapshot.quoteTime).toLocaleString()}. Check data freshness before using this setup.` : 'Quote freshness unverified.'}</p>
       </details>
+      <PlanTrade key={snapshot.symbol} symbol={snapshot.symbol} />
     </section>
   );
 }

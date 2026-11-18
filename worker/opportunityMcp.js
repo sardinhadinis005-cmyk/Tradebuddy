@@ -1,11 +1,14 @@
 import { readOpportunities } from './opportunityService.js';
+import { planningTools, callPlanningTool } from './planning.js';
 const mode = { type: 'string', enum: ['live', 'review'], default: 'live' };
 const annotations = { readOnlyHint: true, destructiveHint: false, openWorldHint: true };
 export const opportunityTools = [
+  ...planningTools,
   { name: 'list_opportunities', description: 'Read qualifying opportunities from your configured Tradier screener universe. Includes source, timestamps, data-quality warnings and ranking. Not a whole-market search or an order recommendation. May request market data.', inputSchema: { type: 'object', properties: { mode, limit: { type: 'integer', minimum: 1, maximum: 20 } }, additionalProperties: false }, annotations },
   { name: 'get_setup_snapshot', description: 'Read research context for a qualifying symbol in your current configured scan, including assessment, levels, retracement and feed timing. Returns not_found if absent; does not scan an arbitrary symbol independently. A new scan may differ from an earlier list.', inputSchema: { type: 'object', properties: { symbol: { type: 'string', maxLength: 10 }, mode }, required: ['symbol'], additionalProperties: false }, annotations },
 ];
 export async function callOpportunityTool(name, args, env, email) {
+  if (planningTools.some(t => t.name === name)) return callPlanningTool(name, args, env, email);
   const tool = opportunityTools.find(t => t.name === name);
   if (!tool || !args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Invalid tool arguments');
   if (Object.keys(args).some(k => !Object.hasOwn(tool.inputSchema.properties, k))) throw new Error('Unknown fields');
