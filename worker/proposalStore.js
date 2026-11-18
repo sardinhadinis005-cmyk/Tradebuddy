@@ -23,6 +23,10 @@ export async function proposalStore(env, email, now = Date.now()) {
   return {
     async create(input) {
       const record = createProposal(input, { id: crypto.randomUUID(), now });
+      const request = await env.SETTINGS.get(`planning:v1:${owner}:${input.planningRequestId}`);
+      if (!request) throw new Error('Planning request not found');
+      const parsed = JSON.parse(request);
+      if (parsed.symbol !== record.terms.symbol || parsed.environment !== 'sandbox') throw new Error('Planning request does not match proposal');
       await env.SETTINGS.put(prefix + record.id, JSON.stringify(record));
       return record;
     },

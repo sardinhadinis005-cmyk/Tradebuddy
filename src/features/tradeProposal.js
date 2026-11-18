@@ -1,6 +1,7 @@
 const ACTIONS = new Set(['reject', 'approve_later', 'approve_send']);
 const fail = message => { throw new Error(message); };
 const text = (value, max) => typeof value === 'string' && value.trim() && value.length <= max ? value.trim() : fail('Invalid text');
+const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 
 // Initial execution workflow is sandbox-only and single-leg long options.
 export function createProposal(input, { id, now = Date.now() } = {}) {
@@ -19,7 +20,9 @@ export function createProposal(input, { id, now = Date.now() } = {}) {
   const expires = Date.parse(input.expiresAt);
   if (!Number.isFinite(expires) || expires <= now || expires > now + 900000) fail('Expiry must be within 15 minutes');
   const proposalId = text(id, 80);
-  return { schemaVersion: 1, id: proposalId, version: 1, status: 'pending_review',
+  const planningRequestId = input.planningRequestId;
+  if (typeof planningRequestId !== 'string' || !uuid.test(planningRequestId)) fail('A valid planning request ID is required');
+  return { schemaVersion: 1, id: proposalId, version: 1, status: 'pending_review', planningRequestId,
     createdAt: new Date(now).toISOString(), expiresAt: new Date(expires).toISOString(),
     thesis: text(input.thesis, 4000), invalidation: text(input.invalidation, 2000),
     terms: { environment: 'sandbox', accountId, symbol, optionSymbol, side: 'buy_to_open', quantity: input.quantity, orderType: 'limit', limitPrice: cents / 100, duration: 'day' },

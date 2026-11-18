@@ -3,14 +3,18 @@ import { userId } from './vault.js';
 import { readOpportunities } from './opportunityService.js';
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
 const warning = 'Sandbox research request only. Not order approval. Manual Perplexity handoff required; no automatic wake-up or duplicate-safe execution claiming. Saved market context must be refreshed before any proposal.';
-const view = (record, now) => record && ({ ...record, status: Date.parse(record.expiresAt) <= now ? 'expired' : 'pending', warning, executable: false });
+const view = (record, now, proposals = []) => record && ({ ...record, status: Date.parse(record.expiresAt) <= now ? 'expired' : 'pending', warning, executable: false, linkedProposals: proposals });
 export async function planningStore(env, email, now = Date.now(), scan = readOpportunities) {
   if (!env.SETTINGS || typeof email !== 'string' || !email.trim()) throw new Error('Storage or identity unavailable');
   const prefix = `planning:v1:${await userId(email)}:`;
   const get = async id => {
     if (typeof id !== 'string' || !uuid.test(id)) throw new Error('Invalid request ID');
     const raw = await env.SETTINGS.get(prefix + id);
-    return raw === null ? null : view(JSON.parse(raw), now);
+    if (raw === null) return null;
+    const page = await env.SETTINGS.list({ prefix: `proposal:${await userId(email)}:`, limit: 1000 });
+    if (!page.list_complete) throw new Error('Proposal index requires reconciliation');
+    const proposals = (await Promise.all(page.keys.map(k => env.SETTINGS.get(k.name)))).filter(Boolean).map(JSON.parse).filter(r => r.planningRequestId === id).map(r => ({ id: r.id, status: r.status, createdAt: r.createdAt, expiresAt: r.expiresAt }));
+    return view(JSON.parse(raw), now, proposals);
   };
   return {
     get,
@@ -29,7 +33,7 @@ export async function planningStore(env, email, now = Date.now(), scan = readOpp
       const encoded = JSON.stringify(record);
       if (new TextEncoder().encode(encoded).length > 100000) throw new Error('Snapshot too large');
       await env.SETTINGS.put(prefix + body.id, encoded);
-      return view(record, now);
+      return view(record, now, []);
     },
     async list(cursor) {
       if (cursor !== undefined && (typeof cursor !== 'string' || cursor.length > 2048)) throw new Error('Invalid cursor');
@@ -71,8 +75,8 @@ export async function handlePlanningApi(request, env, deps = {}) {
   } catch { return json({ error: 'Planning request failed. Check authentication, storage and whether the symbol still qualifies in the live scan. Retry with the same request ID if the result is uncertain. No order was submitted.' }, 409); }
 }
 export const planningTools = [
-  { name: 'list_planning_requests', description: 'Read your saved sandbox planning requests, including expired records. Pending means within its 15-minute lifetime, not unprocessed. Paginate to discover all requests; KV listing may lag. No execution authorization.', inputSchema: { type: 'object', properties: { cursor: { type: 'string', maxLength: 2048 } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
-  { name: 'get_planning_request', description: 'Read your saved planning request and immutable-at-application-level snapshot. Check expiry and refresh market/account/options data before drafting. Does not claim, complete, approve or execute a trade.', inputSchema: { type: 'object', properties: { id: { type: 'string', maxLength: 36 } }, required: ['id'], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
+  { name: 'list_planning_requests', description: 'Read your saved sandbox planning requests, including expired records and linked proposal summaries. Pending means within its 15-minute lifetime, not unprocessed. Paginate to discover all requests; KV listing may lag. No execution authorization.', inputSchema: { type: 'object', properties: { cursor: { type: 'string', maxLength: 2048 } }, additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
+  { name: 'get_planning_request', description: 'Read your saved planning request, snapshot and linked proposal summaries. Check expiry and refresh market/account/options data before drafting. Does not claim, complete, approve or execute a trade.', inputSchema: { type: 'object', properties: { id: { type: 'string', maxLength: 36 } }, required: ['id'], additionalProperties: false }, annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false } },
 ];
 export async function callPlanningTool(name, args, env, email) {
   const tool = planningTools.find(t => t.name === name);
