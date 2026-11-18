@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { buildOpportunitySnapshot } from '../features/opportunitySnapshot.js';
 import PlanTrade from './PlanTrade.jsx';
+import PatternDiagram from './PatternDiagram.jsx';
 
 export default function OpportunitySnapshot({ mover }) {
   const snapshot = useMemo(() => buildOpportunitySnapshot(mover), [mover]);
@@ -10,6 +11,7 @@ export default function OpportunitySnapshot({ mover }) {
       <h4>Current opportunity</h4>
       <p>{snapshot.kind} · {snapshot.direction === 'up' ? 'Upward' : 'Downward'} setup</p>
       <p>Strategy-screen match, not an entry signal or an order.</p>
+      <PatternDiagram direction={snapshot.direction} />
       <details>
         <summary>Why this qualifies and what is missing</summary>
         <ul>{snapshot.factors.map(f => <li key={f.id}>{f.label}: {f.status} — {f.detail}</li>)}</ul>
