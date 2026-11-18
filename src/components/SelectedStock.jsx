@@ -1,3 +1,5 @@
+import OpportunitySnapshot from './OpportunitySnapshot.jsx';
+
 export default function SelectedStock({ mover, onClose }) {
   const a = mover.assessment;
   const up = a.direction === 'up';
@@ -17,6 +19,7 @@ export default function SelectedStock({ mover, onClose }) {
         <div><span>Gap</span><b className="stock-gap">{up ? '▲' : '▼'} {gap}</b></div>
       </div>
       {mover.quoteTime && <p className="stock-sub">Last trade {new Date(mover.quoteTime).toLocaleString()}</p>}
+      <OpportunitySnapshot mover={mover} />
     </section>
   );
 }
