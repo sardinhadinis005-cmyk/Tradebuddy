@@ -1,4 +1,5 @@
 import OpportunitySnapshot from './OpportunitySnapshot.jsx';
+import ProposalReview from './ProposalReview.jsx';
 
 export default function SelectedStock({ mover, onClose }) {
   const a = mover.assessment;
@@ -20,6 +21,7 @@ export default function SelectedStock({ mover, onClose }) {
       </div>
       {mover.quoteTime && <p className="stock-sub">Last trade {new Date(mover.quoteTime).toLocaleString()}</p>}
       <OpportunitySnapshot mover={mover} />
+      <ProposalReview key={mover.symbol} symbol={mover.symbol} />
     </section>
   );
 }

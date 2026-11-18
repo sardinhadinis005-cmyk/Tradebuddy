@@ -1,0 +1,10 @@
+.proposal-review { margin-top: 1rem; border-top: 1px solid currentColor; padding-top: 1rem; }
+.proposal-card { margin-top: 1rem; padding: .85rem; border: 1px solid currentColor; border-radius: .65rem; overflow-wrap: anywhere; }
+.proposal-card h5 { margin: 0 0 .6rem; font-size: 1rem; }
+.proposal-terms { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: .5rem; }
+.proposal-terms dt { opacity: .75; }
+.proposal-terms dd { margin: 0; overflow-wrap: anywhere; }
+.proposal-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem; }
+.proposal-confirm { margin-top: .8rem; padding: .75rem; border: 2px solid currentColor; border-radius: .5rem; }
+.proposal-confirm button { margin: .25rem; }
+.proposal-review button { min-height: 44px; white-space: normal; }
