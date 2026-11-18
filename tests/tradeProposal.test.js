@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createProposal, reviewProposal, queuedProposal, proposalStatus } from '../src/features/tradeProposal.js';
+const now = Date.parse('2026-11-18T15:00:00Z');
+const input = { environment: 'sandbox', accountId: 'paper-account', symbol: 'XYZ', optionSymbol: 'XYZ261218C00100000', side: 'buy_to_open', quantity: 1, orderType: 'limit', limitPrice: 1.25, duration: 'day', expiresAt: new Date(now + 600000).toISOString(), thesis: 'Synthetic fixture, not a recommendation', invalidation: 'Fixture only' };
+const make = () => createProposal(input, { id: 'test-proposal', now });
+const review = (record, action) => reviewProposal(record, { action, expectedVersion: 1, actor: 'test-user', now: now + 1 });
+test('new proposals are not queued', () => assert.equal(queuedProposal(make(), now), null));
+test('approve later does not request submission', () => assert.equal(queuedProposal(review(make(), 'approve_later'), now), null));
+test('approve and send requests sandbox submission but still requires confirmation', () => { const r = queuedProposal(review(make(), 'approve_send'), now); assert.equal(r.requiresPerplexityConfirmation, true); assert.equal(r.brokerSubmitted, false); assert.equal(r.executionAuthorizedByThisFunction, false); });
+test('rejected proposals cannot enter queue', () => assert.equal(queuedProposal(review(make(), 'reject'), now), null));
+test('expired proposals cannot be approved', () => { assert.equal(proposalStatus(make(), now + 600000), 'expired'); assert.throws(() => reviewProposal(make(), { action: 'approve_send', expectedVersion: 1, actor: 'test-user', now: now + 600000 })); });
+test('stale version cannot be approved', () => assert.throws(() => reviewProposal(make(), { action: 'approve_send', expectedVersion: 2, actor: 'test-user', now })));
+test('changed approved terms are rejected', () => { const r = review(make(), 'approve_send'); r.terms.quantity = 2; assert.throws(() => queuedProposal(r, now)); });
+test('live and unsupported sides are rejected', () => { assert.throws(() => createProposal({ ...input, environment: 'production' }, { id: 'test', now })); assert.throws(() => createProposal({ ...input, side: 'sell_to_open' }, { id: 'test', now })); });
