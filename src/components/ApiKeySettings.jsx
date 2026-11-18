@@ -2,6 +2,7 @@ import { useState } from 'react';
 import useAccount from '../features/useAccount.js';
 import { saveTradierKey, removeTradierKey, testTradierKey, describeTiming } from '../api/account.js';
 import { loadTradierSettings, clearTradierSettings, validateToken, maskToken } from '../api/tradierSettings.js';
+import McpSettings from './McpSettings.jsx';
 import './account.css';
 
 export default function ApiKeySettings() {
@@ -125,6 +126,7 @@ export default function ApiKeySettings() {
       {message.text && (
         <p className={`settings-status is-${message.kind}`} role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p>
       )}
+      <McpSettings enabled={Boolean(ready)} />
     </section>
   );
 }
