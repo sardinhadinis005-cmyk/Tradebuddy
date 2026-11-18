@@ -11,16 +11,15 @@ directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 
-# Not secret. Only used by the optional shared-token mode (ALLOW_SHARED_TOKEN=true).
 [vars]
 TRADIER_BASE_URL = "https://sandbox.tradier.com"
 
-# Per-user encrypted settings. Wrangler creates this KV namespace on deploy if it does not exist.
+# Persistent production namespace. Do not replace on redeploy.
 [[kv_namespaces]]
 binding = "SETTINGS"
+id = "c3b2c8a0e06b4414a0ad83e6af0cb9cb"
 
-# Secrets (set as type Secret in the dashboard, or with: npx wrangler secret put NAME):
-#   SETTINGS_SECRET  a random string of 32+ characters that encrypts saved keys
-#   TEAM_DOMAIN      https://<your-team>.cloudflareaccess.com
-#   POLICY_AUD       the Application Audience (AUD) tag of the Access application
+# Keep SETTINGS_SECRET as a Worker secret, never a plain-text vars entry.
+# Preserve its existing value: changing it makes saved credentials unreadable.
+# Other required secrets: TEAM_DOMAIN and POLICY_AUD.
 # See docs/ACCOUNT_SETUP.md.
